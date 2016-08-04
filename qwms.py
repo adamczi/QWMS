@@ -2,8 +2,7 @@
 """
 /***************************************************************************
  QWMS
-                                 A QGIS plugin
- WMS services in one place.
+                                 A QGIS plugin - WMS services in one place.
                               -------------------
         begin                : 2016-08-02
         git sha              : $Format:%H$
@@ -45,7 +44,6 @@ class QWMS:
         """
         # Save reference to the QGIS interface
         self.iface = iface
-        self.selectedWMSIndex=0
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -182,112 +180,108 @@ class QWMS:
         # remove the toolbar
         del self.toolbar
 
-    def layerList(self):
-        #pobieranie listy warstw:
-        url_to_wms_getcaps = ('http://mapy.geoportal.gov.pl/wss/service/pub/guest/G2_BDOT_BUD_2009/MapServer/WMSServer?service=WMS&request=GetCapabilities')
+    def approveChoice(self, i):
+        self.dlg.comboBox_2.clear()
+        self.selectedWMSIndex = self.dlg.comboBox.currentIndex()
+        print "current index: ",self.selectedWMSIndex
+        return self.selectedWMSIndex       
+
+    def selectedChoice(self):
+        ## pobieranie listy warstw:
+        service = wmsLinks[self.dlg.comboBox.currentIndex()]
+        url_to_wms_getcaps = wms_getcap_url % (service)
+        print url_to_wms_getcaps
+
         tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps));
         root = tree.getroot()
-        layerDict={}
-        layerID=0
-        for layer in root.findall('./{http://www.opengis.net/wms}Capability/{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer/'):
+        self.layerDict = {}
+        self.layerDictURL = {}
+        layerID = 0
+        
+
+        for child in root.iter('{http://www.opengis.net/wms}Layer'):
+            print child.attrib
+            if child.attrib == {'queryable' : '1'}:
+                correctLevel = True
+        print correctLevel
+        if correctLevel == True:
+            xmlStructureURL = xmlStructureURL_1
+        else:
+            xmlStructureURL = xmlStructureURL_2
+
+        for layer in root.findall(xmlStructureURL):
             if layer.tag == '{http://www.opengis.net/wms}Title':
-                layerDict[layerID]=(layer.text)
+                self.layerDict[layerID] = (layer.text)
+                #print layer.text
+            if layer.tag == '{http://www.opengis.net/wms}Name':
+                self.layerDictURL[layerID] = (layer.text)
                 print layer.text
-                layerID+=1
-        print layerDict
-        print layerDict.values()
+                layerID += 1
+        print self.layerDictURL
+        print self.layerDictURL.values()
 
-        #wybieranie warstwy z uslugi:
-        self.dlg.comboBox_2.addItems(layerDict.values())
-        return layerDict
-
-    def approveChoice(self):
-        #self.dlg.comboBox.currentIndexChanged.connect(self.selChanged)
-        self.selectedWMSIndex = self.dlg.comboBox.currentIndex()
-        #self.selectedWMS = wmsList[selectedWMSIndex]
-        # print self.dlg.comboBox.currentIndex()
-        return self.selectedWMSIndex
+        ## wybieranie warstwy z uslugi:
+        
+        self.dlg.comboBox_2.addItems(self.layerDict.values())
+        return
 
 
-    def run(self):
-        #pobiera uzywane epsg
+    def textBox(self):
+        ## pobiera uzywane epsg
         canvas = self.iface.mapCanvas()
         currentEPSG = canvas.mapRenderer().destinationCrs().authid()
         #currentEPSG = 4326 if not currentEPSG in availableEPSG
 
-        # show the dialog
-        self.dlg.show()
-        
+        service = wmsLinks[self.dlg.comboBox.currentIndex()]
+        index = self.layerDictURL[self.dlg.comboBox_2.currentIndex()]
+        self.urlWithParams = wms_separator.join((wms_url % (service),
+                                            wms_layers
+                                            + str(index),
+                                            wms_styles,
+                                            wms_format,
+                                            wms_crs
+                                            + currentEPSG))            
 
-        
-        #wybieranie uslugi:
+        self.dlg.textEdit.setPlainText(self.urlWithParams)
+        return self.urlWithParams
+
+    def run(self):                
+
+        ## show the dialog
+        self.dlg.show()
+                
+        ## wybieranie uslugi:
         if self.dlg.comboBox.count() == 0:
             self.dlg.comboBox.addItems(wmsList)
 
-        print self.dlg.comboBox.currentIndex()
+        self.dlg.comboBox.currentIndexChanged.connect(self.approveChoice)
 
-        #pobranie innych warstw jesli zmiana indexu
-        self.dlg.pushButton.clicked.connect(self.approveChoice)
-        
-        #selectedWMSIndex = self.approveChoice()
-        print self.selectedWMSIndex
-        #print self.selectedWMSIndex
-        
-        # if selectedWMSIndex:
-        #     print 'x'
-        # else:
-        #     print 'yy'
-        #print chosenIndex
+        ## pobranie innych warstw jesli zmiana indexu
+        self.dlg.pushButton.clicked.connect(self.selectedChoice)
+        self.dlg.pushButton_2.clicked.connect(self.textBox)
 
 
 
-        # #pobieranie listy warstw:
-        # url_to_wms_getcaps = ('http://mapy.geoportal.gov.pl/wss/service/pub/guest/G2_BDOT_BUD_2009/MapServer/WMSServer?service=WMS&request=GetCapabilities')
-        # tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps));
-        # root = tree.getroot()
-        # layerDict={}
-        # layerID=0
-        # for layer in root.findall('./{http://www.opengis.net/wms}Capability/{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer/'):
-        #     if layer.tag == '{http://www.opengis.net/wms}Title':
-        #         layerDict[layerID]=(layer.text)
-        #         print layer.text
-        #         layerID+=1
-        # print layerDict
-        # print layerDict.values()
-
-        
-
-        # #wybieranie warstwy z uslugi:
-        # self.dlg.comboBox_2.addItems(layerDict.values())
-
-         # Run the dialog event loop
+        ## Run the dialog event loop
         result = self.dlg.exec_()       
 
-        #po wcisnieciu OK
-        if result:         
+        ## po wcisnieciu OK
+        if result:                    
+            # urlWithParams = wms_separator.join((wms_url % (service),
+            #                                     wms_layers
+            #                                     + str(index),
+            #                                     wms_styles,
+            #                                     wms_format,
+            #                                     wms_crs
+            #                                     + currentEPSG))            
+            #print self.urlWithParams
 
-            service=wmsLinks['wms_bdot2010']       
-                     
+            finalURL = self.textBox()
 
+            index_2 = self.layerDict[(self.dlg.comboBox_2.currentIndex()+1)]
 
-            urlWithParams = wms_separator.join((wms_url % (service),
-                                                wms_layers
-                                                + str(5),
-                                                wms_styles,
-                                                wms_format,
-                                                wms_crs
-                                                + currentEPSG))            
-            print urlWithParams
-
-
-
-
- 
-
-            ########## dodanie warstwy
-            # rlayer = QgsRasterLayer(urlWithParams, 'nowa', 'wms')
-            # QgsMapLayerRegistry.instance().addMapLayer(rlayer)
-            # if not rlayer.isValid():
-            #      print "Layer failed to load!"
-
-
+            ## dodanie warstwy
+            rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()]+'/'+index_2, 'wms')
+            QgsMapLayerRegistry.instance().addMapLayer(rlayer)
+            if not rlayer.isValid():
+                 print "Layer failed to load!"
