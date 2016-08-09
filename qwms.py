@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- QWMS
-                                 A QGIS plugin - WMS services in one place.
+        QWMS
+        A QGIS plugin - WMS services in one place.
+        
+        WMS Services are (C) by Glowny Urzad Geodezji i Kartografii, Poland
+        www.geoportal.gov.pl
+        
                               -------------------
         begin                : 2016-08-02
         git sha              : $Format:%H$
@@ -19,8 +23,10 @@
  *                                                                         *
  ***************************************************************************/
 """
+from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
+from PyQt4.QtGui import QAction, QIcon, QListWidget, QListWidgetItem
+from xmlToDict import *
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
@@ -181,107 +187,212 @@ class QWMS:
         del self.toolbar
 
     def approveChoice(self, i):
+        """Returns index of WMS service"""
         self.dlg.comboBox_2.clear()
+        self.dlg.textEdit.clear()
         self.selectedWMSIndex = self.dlg.comboBox.currentIndex()
-        print "current index: ",self.selectedWMSIndex
         return self.selectedWMSIndex       
 
     def selectedChoice(self):
-        ## pobieranie listy warstw:
+        """Gets layers of selected WMS"""
+        
+        ## Execute GetCapabilities
+        self.dlg.comboBox_2.clear()
         service = wmsLinks[self.dlg.comboBox.currentIndex()]
         url_to_wms_getcaps = wms_getcap_url % (service)
-        print url_to_wms_getcaps
 
-        tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps));
+        ## Read the XML
+        try:
+            tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps));
+        except: 
+            self.dlg.textEdit.setPlainText('Server error')
         root = tree.getroot()
-        self.layerDict = {}
-        self.layerDictURL = {}
-        layerID = 0
-        
 
-        for child in root.iter('{http://www.opengis.net/wms}Layer'):
-            print child.attrib
-            if child.attrib == {'queryable' : '1'}:
-                correctLevel = True
-        print correctLevel
-        if correctLevel == True:
-            xmlStructureURL = xmlStructureURL_1
-        else:
-            xmlStructureURL = xmlStructureURL_2
+        self.layerDict = {} # User-friendly names
+        self.layerDictURL = {} # Names that URL parses
 
-        for layer in root.findall(xmlStructureURL):
-            if layer.tag == '{http://www.opengis.net/wms}Title':
-                self.layerDict[layerID] = (layer.text)
-                #print layer.text
-            if layer.tag == '{http://www.opengis.net/wms}Name':
-                self.layerDictURL[layerID] = (layer.text)
-                print layer.text
-                layerID += 1
-        print self.layerDictURL
-        print self.layerDictURL.values()
-
-        ## wybieranie warstwy z uslugi:
-        
-        self.dlg.comboBox_2.addItems(self.layerDict.values())
+        ## Choose proper path and get available layers to dict
+        ## depending on XML structure
+        layerID = 0 
+     
+        if root.findall(xmlStructureURL_3):
+            print 'xml lev 3'
+            for layer in root.findall(xmlStructureURL_3):
+                if layer.tag == layerTagTitle:
+                    self.layerDict[layerID-1] = (layer.text)
+                if layer.tag == layerTagName:
+                    self.layerDictURL[layerID] = (layer.text)
+                layerID += 1            
+        else: 
+            if root.findall(xmlStructureURL_2):
+                print 'xml lev 2'
+                for layer in root.findall(xmlStructureURL_2):
+                    if layer.tag == layerTagTitle:
+                        self.layerDict[layerID-1] = (layer.text)
+                    if layer.tag == layerTagName:
+                        self.layerDictURL[layerID] = (layer.text)
+                        layerID += 1            
+            else:
+                if root.findall(xmlStructureURL_1):
+                    print 'xml lev 1'
+                    for layer in root.findall(xmlStructureURL_1):
+                        if layer.tag == layerTagTitle:
+                            self.layerDict[layerID-1] = (layer.text)
+                        if layer.tag == layerTagName:
+                            self.layerDictURL[layerID] = (layer.text)
+                            layerID += 1
+                else:
+                    if root.findall(xmlStructureURL_4):
+                        print 'xml lev 4'
+                        for layer in root.findall(xmlStructureURL_4):
+                            if layer.tag == layerTagTitle:
+                                self.layerDict[layerID-1] = (layer.text)
+                            if layer.tag == layerTagName:
+                                self.layerDictURL[layerID] = (layer.text)
+                            layerID += 1       
+                    else:
+                        print 'Unknown XML structure'
+            
+        ## Gets available layers and adds them as checkboxes
+        self.dlg.listWidget.clear()
+        self.dlg.listWidget.setVisible(True)  
+        for key, value in self.layerDict.iteritems():
+            self.layerToSelect = QListWidgetItem()
+            self.layerToSelect.setText(value)
+            self.layerToSelect.setFlags(self.layerToSelect.flags() | QtCore.Qt.ItemIsUserCheckable)
+            if len(self.layerDict) <= 1: # if only one layer available
+                self.layerToSelect.setCheckState(QtCore.Qt.Checked)
+                self.dlg.listWidget.addItem(self.layerToSelect)
+                self.dlg.listWidget.setEnabled(False)    
+            else: # if more than one available
+                self.layerToSelect.setCheckState(QtCore.Qt.Unchecked)
+                self.dlg.listWidget.addItem(self.layerToSelect)
+                self.dlg.listWidget.setEnabled(True) 
+                self.dlg.pushButton_3.setEnabled(True)          
+        self.dlg.pushButton_2.setEnabled(True)
         return
 
+    def iterate(self):
+        """Checks which layers have been selected and returns them"""
+        self.items = []
+        self.countChecked = 0
+        for index in xrange(self.dlg.listWidget.count()):
+            if self.dlg.listWidget.item(index).checkState() == QtCore.Qt.Checked:
+                self.countChecked += 1
+                self.items.append(self.dlg.listWidget.item(index).text())
+
+        ## Get IDs of chosen layers to query it from listDictURL dict
+        self.keysIDs = []
+        self.keysURL = []
+        self.indexStyles = []
+        for i in self.items:
+            for key, value in self.layerDict.iteritems():
+                if i == value:
+                    self.keysIDs.append(key)
+
+        ## Create 'styles' part of WMS URL depending on number of layers chosen
+        for i in self.keysIDs:
+            for key, value in self.layerDictURL.iteritems():
+                if i == key:
+                    self.keysURL.append(value)
+                    self.indexStyles.append(wms_styles)
+        return self.items
 
     def textBox(self):
-        ## pobiera uzywane epsg
+        """Shows URL to be queried in the text box"""
+        
+        ## Gets current EPSG
         canvas = self.iface.mapCanvas()
         currentEPSG = canvas.mapRenderer().destinationCrs().authid()
-        #currentEPSG = 4326 if not currentEPSG in availableEPSG
+        if currentEPSG not in availableEPSG:
+            currentEPSG = 'EPSG:4326'
 
+        ## Get part of WMS URL corresponding to selected service
         service = wmsLinks[self.dlg.comboBox.currentIndex()]
-        index = self.layerDictURL[self.dlg.comboBox_2.currentIndex()]
-        self.urlWithParams = wms_separator.join((wms_url % (service),
-                                            wms_layers
-                                            + str(index),
-                                            wms_styles,
-                                            wms_format,
-                                            wms_crs
-                                            + currentEPSG))            
 
+        self.iterate()
+
+        ## If more than one layer selected
+        if self.countChecked > 1:
+            for selectedLayer in self.keysURL:
+                indexLayers = '&layers='.join(self.keysURL)
+                indexStyles = '&'.join(self.indexStyles)
+
+            self.urlWithParams = wms_separator.join((wms_url % (service),
+                                                wms_format,
+                                                wms_layers
+                                                 + indexLayers,
+                                                indexStyles,
+                                                wms_crs
+                                                + currentEPSG))
+        ## If one layer selected
+        elif self.countChecked == 1:
+            for selectedLayer in self.keysURL:
+                indexLayers = self.keysURL[0]
+
+            self.urlWithParams = wms_separator.join((wms_url % (service),
+                                    wms_format,
+                                    wms_layers
+                                     + indexLayers,
+                                    wms_styles,
+                                    wms_crs
+                                    + currentEPSG))
+        else:
+            self.urlWithParams = 'Error'
+
+        ## Insert URL to be queried in TextBox
         self.dlg.textEdit.setPlainText(self.urlWithParams)
+
         return self.urlWithParams
 
-    def run(self):                
+    def selectAllNone(self):
+        """Selects or deselects all layers in checkbox list"""
+        if self.dlg.listWidget.item(0).checkState() == QtCore.Qt.Unchecked:
+            for index in xrange(self.dlg.listWidget.count()):
+                self.dlg.listWidget.item(index).setCheckState(QtCore.Qt.Checked)
+        else:
+            for index in xrange(self.dlg.listWidget.count()):
+                self.dlg.listWidget.item(index).setCheckState(QtCore.Qt.Unchecked)
 
-        ## show the dialog
+    def run(self):      
+        """ Run the plugin """        
+        self.dlg.pushButton_2.setEnabled(False)
+        self.dlg.comboBox_2.setEnabled(False)
+        self.dlg.pushButton_3.setEnabled(False)
+        ## Show the dialog
         self.dlg.show()
-                
-        ## wybieranie uslugi:
+
+        ## Add services to the list:
         if self.dlg.comboBox.count() == 0:
             self.dlg.comboBox.addItems(wmsList)
 
+        ## Refreshes window after changing service
         self.dlg.comboBox.currentIndexChanged.connect(self.approveChoice)
 
-        ## pobranie innych warstw jesli zmiana indexu
+        ## Get layers of selected service
         self.dlg.pushButton.clicked.connect(self.selectedChoice)
+
+        ## Select all/none layers
+        self.dlg.pushButton_3.clicked.connect(self.selectAllNone)
+
+        ## Get WMS address to be queried
         self.dlg.pushButton_2.clicked.connect(self.textBox)
-
-
 
         ## Run the dialog event loop
         result = self.dlg.exec_()       
 
-        ## po wcisnieciu OK
-        if result:                    
-            # urlWithParams = wms_separator.join((wms_url % (service),
-            #                                     wms_layers
-            #                                     + str(index),
-            #                                     wms_styles,
-            #                                     wms_format,
-            #                                     wms_crs
-            #                                     + currentEPSG))            
-            #print self.urlWithParams
+        ## After pressing OK do
+        if result:      
+            if self.dlg.textEdit.toPlainText() == '':
+                self.textBox() # If Get WMS URL is not clicked
 
-            finalURL = self.textBox()
-
-            index_2 = self.layerDict[(self.dlg.comboBox_2.currentIndex()+1)]
-
-            ## dodanie warstwy
-            rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()]+'/'+index_2, 'wms')
-            QgsMapLayerRegistry.instance().addMapLayer(rlayer)
-            if not rlayer.isValid():
-                 print "Layer failed to load!"
+            finalURL = self.dlg.textEdit.toPlainText()
+            if finalURL != 'Error':
+            ## Add layer(s)
+                rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()], 'wms')
+                if not rlayer.isValid():
+                     print "Layer failed to load!"
+                else:
+                    QgsMapLayerRegistry.instance().addMapLayer(rlayer)
+            else:
+                print 'Error in querying available layers'
