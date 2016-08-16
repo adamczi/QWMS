@@ -13,15 +13,16 @@ layerTagName = '{http://www.opengis.net/wms}Name'
 
 ## URL parameters
 wms_separator = '&'
-wms_url = "url=http://mapy.geoportal.gov.pl/wss/service/%s/WMSServer"
+wms_url_geop = "url=http://mapy.geoportal.gov.pl/wss/service/%s/WMSServer"
+wms_url_gdos = 'url=http://sdi.gdos.gov.pl/wms'
 wms_layers = 'layers='
 wms_styles = 'styles='
 wms_format = 'format=image/png8'
 wms_crs = 'crs='
 
 ## URL for GetCapabilities:
-wms_getcap_url = "http://mapy.geoportal.gov.pl/wss/service/%s/WMSServer?service=WMS&request=GetCapabilities"
-wms_gdos = 'url=http://wms.gdos.gov.pl/geoserver/wms?service=WMS&request=GetCapabilities'
+wms_getcap_geop = "http://mapy.geoportal.gov.pl/wss/service/%s/WMSServer?service=WMS&request=GetCapabilities"
+wms_getcap_gdos = 'http://sdi.gdos.gov.pl/wms?request=GetCapabilities'
 
 ## Links and list of WMS Services
 ## taken from http://www.geoportal.gov.pl/uslugi/usluga-przegladania-wms
@@ -66,6 +67,8 @@ wmsLinks = ['img/guest/Administracyjna/MapServer',
             'pub/guest/G2_SKOROWIDZE_TOPO/MapServer',
             'pub/guest/G2_SKOROWIDZE_HYDRO/MapServer',
             'pub/guest/G2_ZUS_WMS/MapServer'
+            # separator
+            # gdos
             ]
 
 wmsList = ['Administracyjna Mapa Polski',
@@ -106,5 +109,7 @@ wmsList = ['Administracyjna Mapa Polski',
             'Baza Danych Obiektów Topograficznych – skorowidze',
             'Mapa topograficzna – skorowidze',
             'Mapa hydrograficzna - skorowidze',
-            'Oddziały ZUS'
+            'Oddziały ZUS',
+            # separator
+            'Geoserwis GDOS'
             ]

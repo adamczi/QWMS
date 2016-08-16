@@ -26,7 +26,6 @@
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon, QListWidget, QListWidgetItem
-from xmlToDict import *
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
@@ -198,12 +197,15 @@ class QWMS:
         
         ## Execute GetCapabilities
         self.dlg.comboBox_2.clear()
-        service = wmsLinks[self.dlg.comboBox.currentIndex()]
-        url_to_wms_getcaps = wms_getcap_url % (service)
+        if self.dlg.comboBox.currentIndex() == len(wmsList): # if GDOS
+            url_to_wms_getcaps = wms_getcap_gdos
+        else:            
+            service = wmsLinks[self.dlg.comboBox.currentIndex()] # else
+            url_to_wms_getcaps = wms_getcap_geop % (service)
 
         ## Read the XML
         try:
-            tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps));
+            tree = ET.parse(urllib2.urlopen(url_to_wms_getcaps))
         except: 
             self.dlg.textEdit.setPlainText('Server error')
         root = tree.getroot()
@@ -216,7 +218,6 @@ class QWMS:
         layerID = 0 
      
         if root.findall(xmlStructureURL_3):
-            print 'xml lev 3'
             for layer in root.findall(xmlStructureURL_3):
                 if layer.tag == layerTagTitle:
                     self.layerDict[layerID-1] = (layer.text)
@@ -225,7 +226,6 @@ class QWMS:
                 layerID += 1            
         else: 
             if root.findall(xmlStructureURL_2):
-                print 'xml lev 2'
                 for layer in root.findall(xmlStructureURL_2):
                     if layer.tag == layerTagTitle:
                         self.layerDict[layerID-1] = (layer.text)
@@ -234,7 +234,6 @@ class QWMS:
                         layerID += 1            
             else:
                 if root.findall(xmlStructureURL_1):
-                    print 'xml lev 1'
                     for layer in root.findall(xmlStructureURL_1):
                         if layer.tag == layerTagTitle:
                             self.layerDict[layerID-1] = (layer.text)
@@ -243,7 +242,6 @@ class QWMS:
                             layerID += 1
                 else:
                     if root.findall(xmlStructureURL_4):
-                        print 'xml lev 4'
                         for layer in root.findall(xmlStructureURL_4):
                             if layer.tag == layerTagTitle:
                                 self.layerDict[layerID-1] = (layer.text)
@@ -308,7 +306,11 @@ class QWMS:
             currentEPSG = 'EPSG:4326'
 
         ## Get part of WMS URL corresponding to selected service
-        service = wmsLinks[self.dlg.comboBox.currentIndex()]
+        if self.dlg.comboBox.currentIndex() == len(wmsList):
+            wms_url = wms_url_gdos
+        else:            
+            service = wmsLinks[self.dlg.comboBox.currentIndex()]
+            wms_url = wms_url_geop % (service)
 
         self.iterate()
 
@@ -318,7 +320,7 @@ class QWMS:
                 indexLayers = '&layers='.join(self.keysURL)
                 indexStyles = '&'.join(self.indexStyles)
 
-            self.urlWithParams = wms_separator.join((wms_url % (service),
+            self.urlWithParams = wms_separator.join((wms_url,
                                                 wms_format,
                                                 wms_layers
                                                  + indexLayers,
@@ -330,7 +332,7 @@ class QWMS:
             for selectedLayer in self.keysURL:
                 indexLayers = self.keysURL[0]
 
-            self.urlWithParams = wms_separator.join((wms_url % (service),
+            self.urlWithParams = wms_separator.join((wms_url,
                                     wms_format,
                                     wms_layers
                                      + indexLayers,
@@ -365,6 +367,7 @@ class QWMS:
         ## Add services to the list:
         if self.dlg.comboBox.count() == 0:
             self.dlg.comboBox.addItems(wmsList)
+            self.dlg.comboBox.insertSeparator(39)
 
         ## Refreshes window after changing service
         self.dlg.comboBox.currentIndexChanged.connect(self.approveChoice)
@@ -389,7 +392,11 @@ class QWMS:
             finalURL = self.dlg.textEdit.toPlainText()
             if finalURL != 'Error':
             ## Add layer(s)
-                rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()], 'wms')
+                if self.dlg.comboBox.currentIndex() == len(wmsList): # if GDOS
+                    rlayer = QgsRasterLayer(finalURL, wmsList[39], 'wms')
+                else:            
+                    rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()], 'wms')
+
                 if not rlayer.isValid():
                      print "Layer failed to load!"
                 else:
