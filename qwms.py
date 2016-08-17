@@ -187,7 +187,6 @@ class QWMS:
 
     def approveChoice(self, i):
         """Returns index of WMS service"""
-        self.dlg.comboBox_2.clear()
         self.dlg.textEdit.clear()
         self.selectedWMSIndex = self.dlg.comboBox.currentIndex()
         return self.selectedWMSIndex       
@@ -196,7 +195,6 @@ class QWMS:
         """Gets layers of selected WMS"""
         
         ## Execute GetCapabilities
-        self.dlg.comboBox_2.clear()
         if self.dlg.comboBox.currentIndex() == len(wmsList): # if GDOS
             url_to_wms_getcaps = wms_getcap_gdos
         else:            
@@ -249,7 +247,7 @@ class QWMS:
                                 self.layerDictURL[layerID] = (layer.text)
                             layerID += 1       
                     else:
-                        print 'Unknown XML structure'
+                        self.iface.messageBar().pushMessage("Error", "Unknown metadata structure", level=QgsMessageBar.WARNING, duration=3)
             
         ## Gets available layers and adds them as checkboxes
         self.dlg.listWidget.clear()
@@ -359,7 +357,6 @@ class QWMS:
     def run(self):      
         """ Run the plugin """        
         self.dlg.pushButton_2.setEnabled(False)
-        self.dlg.comboBox_2.setEnabled(False)
         self.dlg.pushButton_3.setEnabled(False)
         ## Show the dialog
         self.dlg.show()
@@ -398,8 +395,8 @@ class QWMS:
                     rlayer = QgsRasterLayer(finalURL, wmsList[self.dlg.comboBox.currentIndex()], 'wms')
 
                 if not rlayer.isValid():
-                     print "Layer failed to load!"
+                     self.iface.messageBar().pushMessage("Error", "Layer failed to load", level=QgsMessageBar.WARNING, duration=3)
                 else:
                     QgsMapLayerRegistry.instance().addMapLayer(rlayer)
             else:
-                print 'Error in querying available layers'
+                self.iface.messageBar().pushMessage("Error", "Error in querying available layers", level=QgsMessageBar.WARNING, duration=3)
