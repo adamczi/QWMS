@@ -5,7 +5,8 @@
         A QGIS plugin - WMS services in one place.
         
         WMS Services are (C) by Glowny Urzad Geodezji i Kartografii, Poland
-        www.geoportal.gov.pl
+        - www.geoportal.gov.pl and Generalna Dyrekcja Ochrony Srodowiska, 
+        Poland - www.gdos.gov.pl
         
                               -------------------
         begin                : 2016-08-02
@@ -32,9 +33,14 @@ import resources
 from qwms_dialog import QWMSDialog
 import os.path
 from qgis.core import *
+from qgis.gui import QgsMessageBar
 from utils import *
 import urllib2
 import xml.etree.ElementTree as ET
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 class QWMS:
     """QGIS Plugin Implementation."""
@@ -65,8 +71,8 @@ class QWMS:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-        # Create the dialog (after translation) and keep reference
-        self.dlg = QWMSDialog()
+        # Create the dialog (after translation) and keep reference, window on top
+        self.dlg = QWMSDialog(self.iface.mainWindow())
 
         # Declare instance attributes
         self.actions = []
@@ -296,7 +302,6 @@ class QWMS:
 
     def textBox(self):
         """Shows URL to be queried in the text box"""
-        
         ## Gets current EPSG
         canvas = self.iface.mapCanvas()
         currentEPSG = canvas.mapRenderer().destinationCrs().authid()
@@ -325,6 +330,7 @@ class QWMS:
                                                 indexStyles,
                                                 wms_crs
                                                 + currentEPSG))
+
         ## If one layer selected
         elif self.countChecked == 1:
             for selectedLayer in self.keysURL:

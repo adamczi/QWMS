@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 
+import sys  
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
+## EPSGs that Geoportal can return tiles in
 availableEPSG = ['EPSG:2176', 'EPSG:2177', 'EPSG:2178', 'EPSG:2179', 'EPSG:2180', 'EPSG:4326']
 
+## Different WMS structures used by Geoportal depending on layer
 xmlStructureURL_4 = './{http://www.opengis.net/wms}Capability/{http://www.opengis.net/wms}Layer/' # ISOK Hipsometria & Ortofotomapa archiwalna
 xmlStructureURL_1 = xmlStructureURL_4+'{http://www.opengis.net/wms}Layer/'
 xmlStructureURL_2 = xmlStructureURL_1+'{http://www.opengis.net/wms}Layer/'
 xmlStructureURL_3 = xmlStructureURL_2+'{http://www.opengis.net/wms}Layer/'
 
-
+## Headlines
 layerTagTitle = '{http://www.opengis.net/wms}Title'
 layerTagName = '{http://www.opengis.net/wms}Name'
 
@@ -26,7 +32,8 @@ wms_getcap_gdos = 'http://sdi.gdos.gov.pl/wms?request=GetCapabilities'
 
 ## Links and list of WMS Services
 ## taken from http://www.geoportal.gov.pl/uslugi/usluga-przegladania-wms
-# mialy byc importowane z CSV ale moze pozniej :(
+
+## mialy byc importowane z CSV czy cos ale moze pozniej :(
 
 wmsLinks = ['img/guest/Administracyjna/MapServer',
             'pub/guest/G2_BDOT_BUD_2009/MapServer',
@@ -71,7 +78,7 @@ wmsLinks = ['img/guest/Administracyjna/MapServer',
             # gdos
             ]
 
-wmsList = ['Administracyjna Mapa Polski',
+wmsList_nonUTF = ['Administracyjna Mapa Polski',
             'Budynki BDOT 2009',
             'Budynki BDOT 2010',
             'Dane o charakterze katastralnym',
@@ -113,3 +120,6 @@ wmsList = ['Administracyjna Mapa Polski',
             # separator
             'Geoserwis GDOS'
             ]
+
+## Convert list of WMS services to UTF-8
+wmsList = [unicode(i) for i in wmsList_nonUTF]
