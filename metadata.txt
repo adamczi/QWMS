@@ -26,7 +26,7 @@ repository=https://bitbucket.org/adamczi/qwms
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=
+tags=geoportal, geoserwis, wms, gugik, gdos
 
 homepage=
 category=Plugins
